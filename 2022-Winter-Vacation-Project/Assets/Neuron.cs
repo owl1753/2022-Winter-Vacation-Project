@@ -16,6 +16,7 @@ public class Neuron : MonoBehaviour
     List<float> activations;
     float[] weights;
     float bias;
+    public float z;
     public float a;
     public int layerIndex;
     public int preLayerSize;
@@ -35,6 +36,12 @@ public class Neuron : MonoBehaviour
         }
         weights = new float[preLayerSize];
         activations = new List<float>();
+
+        for (int i = 0; i < weights.Length; i++)
+        {
+            weights[i] = Random.Range(-10.0f, 10.0f);
+        }
+        bias = Random.Range(-10.0f, 10.0f);
     }
 
     // Update is called once per frame
@@ -53,10 +60,10 @@ public class Neuron : MonoBehaviour
         {
             for (int i = 0; i < preLayerSize; i++)
             {
-                a += weights[i] * activations[i];
+                z += weights[i] * activations[i];
             }
-            a += bias;
-            a = Sigmoid(a);
+            z += bias;
+            a = Sigmoid(z);
         }
         if (layer == Layer.InputLayer || layer == Layer.HiddenLayer)
         {
@@ -71,9 +78,10 @@ public class Neuron : MonoBehaviour
             print(a);
         }
 
-        sp.color = new Color(sp.color.r * (1 - a), sp.color.g, sp.color.b, sp.color.a);
-        yield return new WaitForSeconds(0.1f);
-        sp.color = Color.white;
+        sp.color = Color.white * a;
+        sp.color = new Color(sp.color.r, sp.color.g, sp.color.b, 1.0f);
+        yield return new WaitForSeconds(0.5f);
+        sp.color = Color.black;
 
         endCalculation = true;
         gm.CheckEndCalculation(layerIndex);

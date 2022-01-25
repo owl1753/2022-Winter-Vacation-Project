@@ -22,11 +22,13 @@ public class GameManager : MonoBehaviour {
     public int IntervalX;
     public int IntervalY;
     public int epochs;
+    public int batchSize;
+    public int learningDataIndex;
     public int count;
-    public bool learning;
     public GameObject neuronPrefab;
     public TMP_InputField layerCountTextField;
     public TMP_InputField layerSizeTextField;
+    public TMP_InputField epochsTextField;
 
     // Start is called before the first frame update
     void Start()
@@ -260,7 +262,6 @@ public class GameManager : MonoBehaviour {
             }
         }
         #endregion
-        count = 0;
     }
 
     // Update is called once per frame
@@ -294,7 +295,7 @@ public class GameManager : MonoBehaviour {
             List<Neuron> nextNeurons;
             if (layerIndex == layerCount - 1)
             {
-                count++;
+                learningDataIndex++;
                 nextNeurons = GetNeuronsByLayerIndex(0);
                 if (nextNeurons == null)
                 {
@@ -302,11 +303,23 @@ public class GameManager : MonoBehaviour {
                 }
                 for (int i = 0; i < nextNeurons.Count; i++)
                 {
-                    if (count < learningDatas.Length)
+                    if (learningDataIndex < learningDatas.Length)
                     {
-                        print(count);
-                        nextNeurons[i].a = learningDatas[count].nums[i / 9, i % 9];
+                        
+                        nextNeurons[i].a = learningDatas[learningDataIndex].nums[i / 9, i % 9];
                         StartCoroutine(nextNeurons[i].Load());
+                    }
+                    else
+                    {
+                        if (count < epochs)
+                        {
+                            count++;
+                            learningDataIndex = 0;
+                        }
+                        else
+                        {
+                            return;
+                        }
                     }
                 }
             }
@@ -343,13 +356,16 @@ public class GameManager : MonoBehaviour {
     {
         string layerCountText = layerCountTextField.text;
         string layerSizeText = layerSizeTextField.text;
+        string epochsText = epochsTextField.text;
+
         if (CatchIntFormatError(layerCountText) || CatchIntFormatError(layerSizeText))
         {
             return;
         }
         
         layerCount = int.Parse(layerCountText) + 2;
-        layerSize = int.Parse(layerSizeText);   
+        layerSize = int.Parse(layerSizeText);
+        epochs = int.Parse(epochsText);
 
         Neuron[] preNeurons = FindObjectsOfType<Neuron>();
         if (preNeurons != null)
@@ -407,7 +423,16 @@ public class GameManager : MonoBehaviour {
     public void ClickLearnButton()
     {
         count = 0;
-        learning = true;
+        if (count < epochs)
+        {
+            count++;
+            learningDataIndex = 0;
+        }
+        else
+        {
+            return;
+        }
+
         List<Neuron> neurons = GetNeuronsByLayerIndex(0);
         if (neurons == null)
         {
@@ -415,7 +440,7 @@ public class GameManager : MonoBehaviour {
         }
         for (int i = 0; i < neurons.Count; i++)
         {
-            neurons[i].a = learningDatas[count].nums[i / 9, i % 9];
+            neurons[i].a = learningDatas[learningDataIndex].nums[i / 9, i % 9];
             StartCoroutine(neurons[i].Load());
         }
     }
