@@ -94,8 +94,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df2c9860f1aacdb4ea002c1790b1b297, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  sp: {fileID: 0}
+  preActivations: []
+  weights: []
+  gradientOfWeights: []
+  gradeintOfBias: 0
+  gradientOfActivation: 0
+  bias: 0
+  z: 0
   a: 0
   layerIndex: 0
   preLayerSize: 0
-  endCalculation: 0
+  endForwardPass: 0
+  endBackwardPass: 0
+  runningRate: 0.03
   layer: 0

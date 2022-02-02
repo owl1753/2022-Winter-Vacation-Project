@@ -22,17 +22,19 @@ public class GameManager : MonoBehaviour {
     public int IntervalX;
     public int IntervalY;
     public int epochs;
+    public bool testing;
     public int batchSize;
-    public int learningDataIndex;
-    public int count;
+    float error;
     public GameObject neuronPrefab;
     public TMP_InputField layerCountTextField;
     public TMP_InputField layerSizeTextField;
     public TMP_InputField epochsTextField;
+    public TMP_InputField batchSizeTextField;
 
     // Start is called before the first frame update
     void Start()
     {
+        error = 0;
         #region Set_Data
         learningDatas = new Pair[dataSize];
         testDatas = new Pair[10];
@@ -270,72 +272,9 @@ public class GameManager : MonoBehaviour {
        
     }
 
-    public void CheckEndCalculation(int layerIndex)
+    public int GetLearningDatasSize()
     {
-        List<Neuron> neurons = GetNeuronsByLayerIndex(layerIndex);
-        if (neurons == null)
-        {
-            return;
-        }
-        bool flag = true;
-        for (int i = 0; i < neurons.Count; i++)
-        {
-            if (!neurons[i].endCalculation)
-            {
-                flag = false;
-            }
-        }
-        if (flag)
-        {
-            for (int i = 0; i < neurons.Count; i++)
-            {
-                neurons[i].endCalculation = false;
-            }
-
-            List<Neuron> nextNeurons;
-            if (layerIndex == layerCount - 1)
-            {
-                learningDataIndex++;
-                nextNeurons = GetNeuronsByLayerIndex(0);
-                if (nextNeurons == null)
-                {
-                    return;
-                }
-                for (int i = 0; i < nextNeurons.Count; i++)
-                {
-                    if (learningDataIndex < learningDatas.Length)
-                    {
-                        
-                        nextNeurons[i].a = learningDatas[learningDataIndex].nums[i / 9, i % 9];
-                        StartCoroutine(nextNeurons[i].Load());
-                    }
-                    else
-                    {
-                        if (count < epochs)
-                        {
-                            count++;
-                            learningDataIndex = 0;
-                        }
-                        else
-                        {
-                            return;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                nextNeurons = GetNeuronsByLayerIndex(layerIndex + 1);
-                if (nextNeurons == null)
-                {
-                    return;
-                }
-                for (int i = 0; i < nextNeurons.Count; i++)
-                {
-                    StartCoroutine(nextNeurons[i].Load());
-                }
-            }
-        }
+        return learningDatas.Length;
     }
 
     public List<Neuron> GetNeuronsByLayerIndex(int layerIndex)
@@ -357,8 +296,10 @@ public class GameManager : MonoBehaviour {
         string layerCountText = layerCountTextField.text;
         string layerSizeText = layerSizeTextField.text;
         string epochsText = epochsTextField.text;
+        string batchSizeText = batchSizeTextField.text;
 
-        if (CatchIntFormatError(layerCountText) || CatchIntFormatError(layerSizeText))
+        if (CatchIntFormatError(layerCountText) || CatchIntFormatError(layerSizeText)
+            || CatchIntFormatError(epochsText) || CatchIntFormatError(batchSizeText))
         {
             return;
         }
@@ -366,6 +307,7 @@ public class GameManager : MonoBehaviour {
         layerCount = int.Parse(layerCountText) + 2;
         layerSize = int.Parse(layerSizeText);
         epochs = int.Parse(epochsText);
+        batchSize = int.Parse(batchSizeText);
 
         Neuron[] preNeurons = FindObjectsOfType<Neuron>();
         if (preNeurons != null)
@@ -383,7 +325,7 @@ public class GameManager : MonoBehaviour {
 
             if (i == 0)
             {
-                for (int j = 0; j < 81; j++)
+                for (int j = 80; j >= 0; j--)
                 {
                     Neuron neuron = Instantiate(neuronPrefab).GetComponent<Neuron>();
                     neuron.transform.position = new Vector2(-((IntervalX * (layerCount - 1)) / 2) + IntervalX * i,
@@ -395,7 +337,7 @@ public class GameManager : MonoBehaviour {
             }
             else if (i == layerCount - 1)
             {
-                for (int j = 0; j < 10; j++)
+                for (int j = 9; j >= 0; j--)
                 {
                     Neuron neuron = Instantiate(neuronPrefab).GetComponent<Neuron>();
                     neuron.transform.position = new Vector2(-((IntervalX * (layerCount - 1)) / 2) + IntervalX * i,
@@ -407,7 +349,7 @@ public class GameManager : MonoBehaviour {
             }
             else
             {
-                for (int j = 0; j < layerSize; j++)
+                for (int j = layerSize - 1; j >= 0; j--)
                 {
                     Neuron neuron = Instantiate(neuronPrefab).GetComponent<Neuron>();
                     neuron.transform.position = new Vector2(-((IntervalX * (layerCount - 1)) / 2) + IntervalX * i,
@@ -422,28 +364,167 @@ public class GameManager : MonoBehaviour {
 
     public void ClickLearnButton()
     {
-        count = 0;
-        if (count < epochs)
+        for (int count = 0; count < epochs; count++)
         {
-            count++;
-            learningDataIndex = 0;
-        }
-        else
-        {
-            return;
-        }
+            for (int learningDataIndex = 0; learningDataIndex < dataSize; learningDataIndex++)
+            {
+                for (int layerIndex = 0; layerIndex < layers.Length; layerIndex++)
+                {
+                    List<Neuron> neurons = GetNeuronsByLayerIndex(layerIndex);
 
-        List<Neuron> neurons = GetNeuronsByLayerIndex(0);
-        if (neurons == null)
-        {
-            return;
-        }
-        for (int i = 0; i < neurons.Count; i++)
-        {
-            neurons[i].a = learningDatas[learningDataIndex].nums[i / 9, i % 9];
-            StartCoroutine(neurons[i].Load());
+                    if (neurons == null)
+                    {
+                        return;
+                    }
+
+                    for (int i = 0; i < neurons.Count; i++)
+                    {
+                        if (layerIndex == 0)
+                        {
+                            neurons[i].a = learningDatas[learningDataIndex].nums[i / 9, i % 9];
+                            neurons[i].ForwardPass();
+                        }
+                        else
+                        {
+                            List<Neuron> preNeurons = GetNeuronsByLayerIndex(layerIndex - 1);
+                            for (int j = 0; j < preNeurons.Count; j++)
+                            {
+                                neurons[i].preActivations[j] = preNeurons[j].a;
+                            }
+                            neurons[i].ForwardPass();
+                        }
+                    }
+                }
+
+                for (int layerIndex = layers.Length - 1; layerIndex >= 0; layerIndex--)
+                {
+                    List<Neuron> neurons = GetNeuronsByLayerIndex(layerIndex);
+
+                    if (neurons == null)
+                    {
+                        return;
+                    }
+
+                    for (int i = 0; i < neurons.Count; i++)
+                    {
+                        if (layerIndex == layers.Length - 1)
+                        {
+                            neurons[i].gradientOfActivation = 2 * (neurons[i].a - learningDatas[learningDataIndex].answer[i]);
+                            error += Mathf.Pow((neurons[i].a - learningDatas[learningDataIndex].answer[i]), 2.0f);
+
+                            if ((learningDataIndex + 1) % batchSize == 0)
+                            {
+                                neurons[i].BackwardPass(true);
+                            }
+                            else
+                            {
+                                neurons[i].BackwardPass(false);
+                            }
+                        }
+                        else
+                        {
+                            List<Neuron> nextNeurons = GetNeuronsByLayerIndex(layerIndex + 1);
+                            float temp = 0;
+                            for (int j = 0; j < nextNeurons.Count; j++)
+                            {
+                                temp += nextNeurons[j].weights[i] * nextNeurons[j].a * (1 - nextNeurons[j].a) * nextNeurons[j].gradientOfActivation;
+                            }
+                            neurons[i].gradientOfActivation = temp;
+
+                            if ((learningDataIndex + 1) % batchSize == 0)
+                            {
+                                neurons[i].BackwardPass(true);
+                            }
+                            else
+                            {
+                                neurons[i].BackwardPass(false);
+                            }
+                        }
+                    }
+                }
+            }
+            error /= learningDatas.Length;
+            print((count + 1) + " " + error);
+            error = 0;
         }
     }
+
+    public void ClickTestButton()
+    {
+        if (!testing)
+        {
+            int randomIndex = Random.Range(0, learningDatas.Length);
+            StartCoroutine(Test(randomIndex));
+        }
+    }
+
+    IEnumerator Test(int randomIndex)
+    {
+        testing = true;
+
+        print(learningDatas[randomIndex].answer[0] + " " +
+            learningDatas[randomIndex].answer[1] + " " +
+            learningDatas[randomIndex].answer[2] + " " +
+            learningDatas[randomIndex].answer[3] + " " +
+            learningDatas[randomIndex].answer[4] + " " +
+            learningDatas[randomIndex].answer[5] + " " +
+            learningDatas[randomIndex].answer[6] + " " +
+            learningDatas[randomIndex].answer[7] + " " +
+            learningDatas[randomIndex].answer[8] + " " +
+            learningDatas[randomIndex].answer[9] + " "
+            );
+
+        for (int layerIndex = 0; layerIndex < layers.Length; layerIndex++)
+        {
+            List<Neuron> neurons = GetNeuronsByLayerIndex(layerIndex);
+
+            for (int i = 0; i < neurons.Count; i++)
+            {
+                if (layerIndex == 0)
+                {
+                    neurons[i].a = learningDatas[randomIndex].nums[i / 9, i % 9];
+                    neurons[i].ForwardPass();
+                    neurons[i].sp.color = Color.white * neurons[i].a;
+                    neurons[i].sp.color = new Color(neurons[i].sp.color.r, neurons[i].sp.color.g, neurons[i].sp.color.b, 1.0f);
+                }
+                else
+                {
+                    List<Neuron> preNeurons = GetNeuronsByLayerIndex(layerIndex - 1);
+                    for (int j = 0; j < preNeurons.Count; j++)
+                    {
+                        neurons[i].preActivations[j] = preNeurons[j].a;
+                    }
+                    neurons[i].ForwardPass();
+                    neurons[i].sp.color = Color.white * neurons[i].a;
+                    neurons[i].sp.color = new Color(neurons[i].sp.color.r, neurons[i].sp.color.g, neurons[i].sp.color.b, 1.0f);
+                }
+            }
+
+            yield return new WaitForSeconds(2); 
+
+            for (int i = 0; i < neurons.Count; i++)
+            {
+                neurons[i].sp.color = Color.black;
+            }
+        }
+
+        List<Neuron> outNeurons = GetNeuronsByLayerIndex(layers.Length - 1);
+
+        print(outNeurons[0].a + " " +
+            outNeurons[1].a + " " +
+            outNeurons[2].a + " " +
+            outNeurons[3].a + " " +
+            outNeurons[4].a + " " +
+            outNeurons[5].a + " " +
+            outNeurons[6].a + " " +
+            outNeurons[7].a + " " +
+            outNeurons[8].a + " " +
+            outNeurons[9].a + " "
+            );
+
+        testing = false;
+    }
+
     bool CatchIntFormatError(string s)
     {
         if (s.Length == 0)

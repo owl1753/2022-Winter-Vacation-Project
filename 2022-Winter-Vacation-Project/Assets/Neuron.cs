@@ -12,15 +12,20 @@ public class Neuron : MonoBehaviour
     };
 
     GameManager gm;
-    SpriteRenderer sp;
-    List<float> activations;
-    float[] weights;
-    float bias;
+    public SpriteRenderer sp;
+    public float[] preActivations;
+    public float[] weights;
+    public float[] gradientOfWeights;
+    public float gradeintOfBias;
+    public float gradientOfActivation;
+    public float bias;
     public float z;
     public float a;
     public int layerIndex;
     public int preLayerSize;
-    public bool endCalculation;
+    public bool endForwardPass;
+    public bool endBackwardPass;
+    public float runningRate;
     public Layer layer;
 
     // Start is called before the first frame update
@@ -29,13 +34,15 @@ public class Neuron : MonoBehaviour
         gm = FindObjectOfType<GameManager>();
         sp = GetComponent<SpriteRenderer>();
         a = 0;
-        endCalculation = false;
+        endForwardPass = false;
+        endBackwardPass = false;
         if (layer != Layer.InputLayer)
         {
             preLayerSize = gm.GetLayerSizeByLayerIndex(layerIndex - 1);
         }
         weights = new float[preLayerSize];
-        activations = new List<float>();
+        preActivations = new float[preLayerSize];
+        gradientOfWeights = new float[weights.Length];
 
         for (int i = 0; i < weights.Length; i++)
         {
@@ -54,36 +61,51 @@ public class Neuron : MonoBehaviour
     {
         return 1 / (1 + Mathf.Exp(-x));
     }
-    public IEnumerator Load()
+    public void ForwardPass()
     {
+        z = 0;
         if (layer == Layer.HiddenLayer || layer == Layer.OutputLayer)
         {
             for (int i = 0; i < preLayerSize; i++)
             {
-                z += weights[i] * activations[i];
+                z += weights[i] * preActivations[i];
             }
             z += bias;
             a = Sigmoid(z);
         }
-        if (layer == Layer.InputLayer || layer == Layer.HiddenLayer)
+    }
+
+    public void BackwardPass(bool updating)
+    {
+        if (layer == Layer.HiddenLayer || layer == Layer.OutputLayer)
         {
-            List<Neuron> nextNeurons = gm.GetNeuronsByLayerIndex(layerIndex + 1);
-            for (int i = 0; i < nextNeurons.Count; i++)
+            for (int i = 0; i < gradientOfWeights.Length; i++)
             {
-                nextNeurons[i].activations.Add(a);
+                gradientOfWeights[i] += (preActivations[i] * a * (1 - a) * gradientOfActivation);
             }
+            gradeintOfBias += a * (1 - a) * gradientOfActivation; 
         }
-        if (layer == Layer.OutputLayer)
+
+        if (updating && !gm.testing)
         {
-            print(a);
+            updateWeights();
+            updateBias();
         }
+    }
 
-        sp.color = Color.white * a;
-        sp.color = new Color(sp.color.r, sp.color.g, sp.color.b, 1.0f);
-        yield return new WaitForSeconds(0.5f);
-        sp.color = Color.black;
+    public void updateWeights()
+    {
+        
+        for (int i = 0; i < weights.Length; i++)
+        {
+            weights[i] -= runningRate * (gradientOfWeights[i] / gm.batchSize);
+            gradientOfWeights[i] = 0;
+        }
+    }
 
-        endCalculation = true;
-        gm.CheckEndCalculation(layerIndex);
+    public void updateBias()
+    {
+        bias -= runningRate * (gradeintOfBias / gm.batchSize);
+        gradeintOfBias = 0;
     }
 }
